@@ -291,35 +291,35 @@ class Generator():
         ###MEDS
         if(self.feat_med):
             self.meds=self.meds[self.meds['stay_id'].isin(self.data['stay_id'])]
-            # self.meds=self.meds[self.meds['start_time']<=include_time]
-            # self.meds.loc[self.meds.stop_time >include_time, 'stop_time']=include_time
+            self.meds=self.meds[self.meds['start_time']<=include_time]
+            self.meds.loc[self.meds.stop_time >include_time, 'stop_time']=include_time
             
         ###ING
         if(self.feat_ing):
             self.ing=self.ing[self.ing['stay_id'].isin(self.data['stay_id'])]
-            # self.ing=self.ing[self.ing['start_time']<=include_time]
-            # self.ing.loc[self.ing.stop_time >include_time, 'stop_time']=include_time
+            self.ing=self.ing[self.ing['start_time']<=include_time]
+            self.ing.loc[self.ing.stop_time >include_time, 'stop_time']=include_time
                     
         
         ###PROCS
         if(self.feat_proc):
             self.proc=self.proc[self.proc['stay_id'].isin(self.data['stay_id'])]
-            # self.proc=self.proc[self.proc['start_time']<=include_time]
+            self.proc=self.proc[self.proc['start_time']<=include_time]
             
         ###OUT
         if(self.feat_out):
             self.out=self.out[self.out['stay_id'].isin(self.data['stay_id'])]
-            # self.out=self.out[self.out['start_time']<=include_time]
+            self.out=self.out[self.out['start_time']<=include_time]
             
        ###CHART
         if(self.feat_chart):
             self.chart=self.chart[self.chart['stay_id'].isin(self.data['stay_id'])]
-            # self.chart=self.chart[self.chart['start_time']<=include_time]
+            self.chart=self.chart[self.chart['start_time']<=include_time]
             
         ###LAB
         if(self.feat_lab):
             self.labs=self.labs[self.labs['stay_id'].isin(self.data['stay_id'])]
-            # self.labs=self.labs[self.labs['start_time']<=include_time]
+            self.labs=self.labs[self.labs['start_time']<=include_time]
         
         #self.los=include_time
     def los_length(self,include_time):
