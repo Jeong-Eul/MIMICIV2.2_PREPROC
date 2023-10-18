@@ -11,7 +11,7 @@ class Integration_data():
         labels=pd.read_csv('./data/csv/labels.csv', header=0)
 
         hids=labels.iloc[:,0].to_list()
-        print("Total Samples",len(hids))
+        print("Total stay",len(hids))
         return hids
     
     def categorical_encoding(self, get_data, first_try):

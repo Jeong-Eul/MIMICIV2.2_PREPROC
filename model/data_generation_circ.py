@@ -15,7 +15,7 @@ if not os.path.exists("./data/csv"):
     os.makedirs("./data/csv")
     
 class Generator():
-    def __init__(self,cohort_output,if_mort,if_admn,if_los,feat_cond,feat_lab,feat_proc,feat_out,feat_chart,feat_med,feat_ing,impute,include_time=72,bucket=1,predW=1):
+    def __init__(self,cohort_output,if_mort,if_admn,if_los,feat_cond,feat_lab,feat_proc,feat_out,feat_chart,feat_med,feat_ing,impute,include_time,bucket=1,predW=1):
         self.feat_cond,self.feat_proc,self.feat_out,self.feat_chart,self.feat_med,self.feat_lab, self.feat_ing = feat_cond,feat_proc,feat_out,feat_chart,feat_med,feat_lab,feat_ing
         self.cohort_output=cohort_output
         self.impute=impute
@@ -276,7 +276,7 @@ class Generator():
     def mortality_length(self,include_time,predW):
         print("include_time",include_time)
         self.los=include_time
-        self.data=self.data[(self.data['los']>=include_time+predW)] #include time=72h, prediction window =1h, los가 78시간 이상인 코호트만 선정
+        self.data=self.data[(self.data['los']>=include_time+predW)] #include time=750h, prediction window =1h, los가 751시간 이상인 코호트만 선정
         self.hids=self.data['stay_id'].unique()
         
         if(self.feat_cond):
@@ -287,38 +287,39 @@ class Generator():
         ####Make equal length input time series and remove data for pred window if needed
         ####Remove case: 약물 주입의 시작 시간이 los보다 작은 경우 + 약물 주입의 끝 시간이 los 보다 클 경우
         ####Lab은 stay id가 부여되고 들어가야함
+        
         ###MEDS
         if(self.feat_med):
             self.meds=self.meds[self.meds['stay_id'].isin(self.data['stay_id'])]
-            self.meds=self.meds[self.meds['start_time']<=include_time]
-            self.meds.loc[self.meds.stop_time >include_time, 'stop_time']=include_time
+            # self.meds=self.meds[self.meds['start_time']<=include_time]
+            # self.meds.loc[self.meds.stop_time >include_time, 'stop_time']=include_time
             
         ###ING
         if(self.feat_ing):
             self.ing=self.ing[self.ing['stay_id'].isin(self.data['stay_id'])]
-            self.ing=self.ing[self.ing['start_time']<=include_time]
-            self.ing.loc[self.ing.stop_time >include_time, 'stop_time']=include_time
+            # self.ing=self.ing[self.ing['start_time']<=include_time]
+            # self.ing.loc[self.ing.stop_time >include_time, 'stop_time']=include_time
                     
         
         ###PROCS
         if(self.feat_proc):
             self.proc=self.proc[self.proc['stay_id'].isin(self.data['stay_id'])]
-            self.proc=self.proc[self.proc['start_time']<=include_time]
+            # self.proc=self.proc[self.proc['start_time']<=include_time]
             
         ###OUT
         if(self.feat_out):
             self.out=self.out[self.out['stay_id'].isin(self.data['stay_id'])]
-            self.out=self.out[self.out['start_time']<=include_time]
+            # self.out=self.out[self.out['start_time']<=include_time]
             
        ###CHART
         if(self.feat_chart):
             self.chart=self.chart[self.chart['stay_id'].isin(self.data['stay_id'])]
-            self.chart=self.chart[self.chart['start_time']<=include_time]
+            # self.chart=self.chart[self.chart['start_time']<=include_time]
             
         ###LAB
         if(self.feat_lab):
             self.labs=self.labs[self.labs['stay_id'].isin(self.data['stay_id'])]
-            self.labs=self.labs[self.labs['start_time']<=include_time]
+            # self.labs=self.labs[self.labs['start_time']<=include_time]
         
         #self.los=include_time
     def los_length(self,include_time):

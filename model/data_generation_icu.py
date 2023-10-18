@@ -15,7 +15,7 @@ if not os.path.exists("./data/csv"):
     os.makedirs("./data/csv")
     
 class Generator():
-    def __init__(self,cohort_output,if_mort,if_admn,if_los,feat_cond,feat_proc,feat_out,feat_chart,feat_med,impute,include_time=24,bucket=1,predW=6):
+    def __init__(self,cohort_output,if_mort,if_admn,if_los,feat_cond,feat_proc,feat_out,feat_chart,feat_med,impute,include_time, bucket, predW):
         self.feat_cond,self.feat_proc,self.feat_out,self.feat_chart,self.feat_med = feat_cond,feat_proc,feat_out,feat_chart,feat_med
         self.cohort_output=cohort_output
         self.impute=impute
