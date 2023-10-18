@@ -5,8 +5,8 @@ from tqdm import tqdm
 from sklearn.preprocessing import LabelEncoder
 
 class Integration_data():
-    def __init__(self):
-        self.categorical_encoding()
+    def __init__(self, get_data, first_try):
+        self.categorical_encoding(get_data, first_try)
     def create_stay_id(self):
         labels=pd.read_csv('./data/csv/labels.csv', header=0)
 
@@ -14,10 +14,15 @@ class Integration_data():
         print("Total Samples",len(hids))
         return hids
     
-    def categorical_encoding(self):
+    def categorical_encoding(self, get_data, first_try):
         hids=self.create_stay_id()
         
-        data=self.getdata(hids)
+        if (get_data == True)&(first_try == True):
+            data=self.getdata(hids)
+            
+        else:
+            data = pd.read_csv('Total.csv')
+            
         #encoding categorical
         gen_encoder = LabelEncoder()
         eth_encoder = LabelEncoder()
@@ -35,18 +40,20 @@ class Integration_data():
         
             
     def getdata(self,ids):
-        df=pd.DataFrame()   
+        df_list = []   
         for sample in tqdm(ids):
             dyn=pd.read_csv('./data/csv/'+str(sample)+'/dynamic.csv',header=[0,1])
-            stat=pd.read_csv('./data/csv/'+str(sample)+'/static.csv',header=[0,1])
-            demo=pd.read_csv('./data/csv/'+str(sample)+'/demo.csv',header=0)
-            dyn.columns=dyn.columns.droplevel(0)
+            stat=pd.read_csv('./data/csv/'+str(sample)+'/static.csv')
             
+            dyn.columns=dyn.columns.droplevel(0)
             columns_to_copy = ['subject_id', 'stay_id', 'hadm_id', 'Age', 'gender', 'ethnicity', 'insurance']
             for column in columns_to_copy:
-                dyn[column] = stat[column].copy()
+                dyn[column] = stat[column].values[0]
+                
+            df_list.append(dyn)
             
-            df = pd.concat([df, dyn], axis = 1)
+        df = pd.concat(df_list, axis = 0)
         
         print("total stay dataframe shape",df.shape)
+        df.to_csv('Total.csv')
         return df
