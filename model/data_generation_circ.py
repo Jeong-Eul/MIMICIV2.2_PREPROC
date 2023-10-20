@@ -15,13 +15,13 @@ if not os.path.exists("./data/csv"):
     os.makedirs("./data/csv")
     
 class Generator():
-    def __init__(self,cohort_output,if_mort,if_admn,if_los,feat_cond,feat_lab,feat_proc,feat_out,feat_chart,feat_med,feat_ing,impute,include_time,bucket=0.5,predW=1):
+    def __init__(self,cohort_output,if_mort,if_admn,if_los,feat_cond,feat_lab,feat_proc,feat_out,feat_chart,feat_med,feat_ing,impute,include_time,bucket,predW=1):
         self.feat_cond,self.feat_proc,self.feat_out,self.feat_chart,self.feat_med,self.feat_lab, self.feat_ing = feat_cond,feat_proc,feat_out,feat_chart,feat_med,feat_lab,feat_ing
         self.cohort_output=cohort_output
         self.impute=impute
         self.data = self.generate_adm()
         print("[ READ COHORT ]")
-        
+        bucket = 0.5 
         self.generate_feat()
         print("[ READ ALL FEATURES ]")
         
@@ -277,13 +277,14 @@ class Generator():
         print("include_time",include_time)
         self.los=include_time
         # self.los = self.data['los']
-        self.data=self.data[(self.data['los']>=include_time+predW)] #include time=750h, prediction window =1h, los가 751시간 이상인 코호트만 선정
+        self.data=self.data[(self.data['los'] >= include_time+predW)] #include time=750h, prediction window =1h, los가 751시간 이상인 코호트만 선정
+        # self.data=self.data[(self.data['los'] <= 375)] # 15일
         self.hids=self.data['stay_id'].unique()
         
         if(self.feat_cond):
             self.cond=self.cond[self.cond['stay_id'].isin(self.data['stay_id'])]
         
-        self.data['los']=include_time
+        # self.data['los']=include_time
 
         ####Make equal length input time series and remove data for pred window if needed
         ####Remove case: 약물 주입의 시작 시간이 los보다 작은 경우 + 약물 주입의 끝 시간이 los 보다 클 경우
@@ -292,35 +293,35 @@ class Generator():
         ###MEDS
         if(self.feat_med):
             self.meds=self.meds[self.meds['stay_id'].isin(self.data['stay_id'])]
-            # self.meds=self.meds[self.meds['start_time']<=include_time]
-            # self.meds.loc[self.meds.stop_time >include_time, 'stop_time']=include_time
+            self.meds=self.meds[self.meds['start_time'] <= include_time]
+            self.meds.loc[self.meds.stop_time > include_time, 'stop_time']=include_time
             
         ###ING
         if(self.feat_ing):
             self.ing=self.ing[self.ing['stay_id'].isin(self.data['stay_id'])]
-            # self.ing=self.ing[self.ing['start_time']<=include_time]
-            # self.ing.loc[self.ing.stop_time >include_time, 'stop_time']=include_time
+            self.ing=self.ing[self.ing['start_time'] <= include_time]
+            self.ing.loc[self.ing.stop_time > include_time, 'stop_time']=include_time
                     
         
         ###PROCS
         if(self.feat_proc):
             self.proc=self.proc[self.proc['stay_id'].isin(self.data['stay_id'])]
-            # self.proc=self.proc[self.proc['start_time']<=include_time]
+            self.proc=self.proc[self.proc['start_time']<=include_time]
             
         ###OUT
         if(self.feat_out):
             self.out=self.out[self.out['stay_id'].isin(self.data['stay_id'])]
-            # self.out=self.out[self.out['start_time']<=include_time]
+            self.out=self.out[self.out['start_time']<=include_time]
             
        ###CHART
         if(self.feat_chart):
             self.chart=self.chart[self.chart['stay_id'].isin(self.data['stay_id'])]
-            # self.chart=self.chart[self.chart['start_time']<=include_time]
+            self.chart=self.chart[self.chart['start_time']<=include_time]
             
         ###LAB
         if(self.feat_lab):
             self.labs=self.labs[self.labs['stay_id'].isin(self.data['stay_id'])]
-            # self.labs=self.labs[self.labs['start_time']<=include_time]
+            self.labs=self.labs[self.labs['start_time']<=include_time]
         
         #self.los=include_time
     def los_length(self,include_time):
@@ -437,138 +438,145 @@ class Generator():
         final_chart=pd.DataFrame()
         final_labs=pd.DataFrame()
         
-#         if(self.feat_med):
-#             self.meds=self.meds.sort_values(by=['start_time'])
-#         if(self.feat_ing):
-#             self.ing=self.ing.sort_values(by=['start_time'])
-#         if(self.feat_proc):
-#             self.proc=self.proc.sort_values(by=['start_time'])
-#         if(self.feat_out):
-#             self.out=self.out.sort_values(by=['start_time'])
-#         if(self.feat_chart):
-#             self.chart=self.chart.sort_values(by=['start_time'])
-#         if(self.feat_lab):
-#             self.labs=self.labs.sort_values(by=['start_time'])
+        if(self.feat_med):
+            self.meds=self.meds.sort_values(by=['start_time'])
+        if(self.feat_ing):
+            self.ing=self.ing.sort_values(by=['start_time'])
+        if(self.feat_proc):
+            self.proc=self.proc.sort_values(by=['start_time'])
+        if(self.feat_out):
+            self.out=self.out.sort_values(by=['start_time'])
+        if(self.feat_chart):
+            self.chart=self.chart.sort_values(by=['start_time'])
+        if(self.feat_lab):
+            self.labs=self.labs.sort_values(by=['start_time'])
 
-        final_meds = final_meds.append(self.meds)
-        final_ing = final_ing.append(self.ing)
-        final_proc = final_proc.append(self.proc)
-        final_out = final_out.append(self.out)
-        final_chart = final_chart.append(self.chart)
-        final_labs = final_labs.append(self.labs)
-#         t=0
-#         for i in tqdm(range(0,self.los,bucket)): 
-#             ###MEDS
-#              if(self.feat_med):
-#                 sub_meds=self.meds[(self.meds['start_time']>=i) & (self.meds['start_time']<i+bucket)].groupby(['stay_id','itemid','orderid']).agg({'stop_time':'max','subject_id':'max','rate':np.nanmean,'amount':np.nanmean})
-#                 sub_meds=sub_meds.reset_index()
-#                 sub_meds['start_time']=t
-#                 sub_meds['stop_time']=sub_meds['stop_time']/bucket
-#                 if final_meds.empty:
-#                     final_meds=sub_meds
-#                 else:
-#                     final_meds=final_meds.append(sub_meds)
- 
-#              ###ING
-#              if(self.feat_ing):
-#                 sub_ing=self.ing[(self.ing['start_time']>=i) & (self.ing['start_time']<i+bucket)].groupby(['stay_id','itemid','orderid']).agg({'stop_time':'max','subject_id':'max','rate':np.nanmean,'amount':np.nanmean})
-#                 sub_ing=sub_ing.reset_index()
-#                 sub_ing['start_time']=t
-#                 sub_ing['stop_time']=sub_ing['stop_time']/bucket
-#                 if final_ing.empty:
-#                     final_ing=sub_ing
-#                 else:
-#                     final_ing=final_ing.append(sub_ing)
-            
-#             ###PROC
-#              if(self.feat_proc):
-#                 sub_proc=self.proc[(self.proc['start_time']>=i) & (self.proc['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'subject_id':'max'})
-#                 sub_proc=sub_proc.reset_index()
-#                 sub_proc['start_time']=t
-#                 if final_proc.empty:
-#                     final_proc=sub_proc
-#                 else:    
-#                     final_proc=final_proc.append(sub_proc)
-                    
-#               ###OUT
-#              if(self.feat_out):
-#                 sub_out=self.out[(self.out['start_time']>=i) & (self.out['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'subject_id':'max'})
-#                 sub_out=sub_out.reset_index()
-#                 sub_out['start_time']=t
-#                 if final_out.empty:
-#                     final_out=sub_out
-#                 else:    
-#                     final_out=final_out.append(sub_out)
-                    
-                    
-#               ###CHART
-#              if(self.feat_chart):
-#                 sub_chart=self.chart[(self.chart['start_time']>=i) & (self.chart['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'valuenum':np.nanmean})
-#                 sub_chart=sub_chart.reset_index()
-#                 sub_chart['start_time']=t
-#                 if final_chart.empty:
-#                     final_chart=sub_chart
-#                 else:    
-#                     final_chart=final_chart.append(sub_chart)
-                    
-#                 ###LAB
-#              if(self.feat_lab):
-#                 sub_labs=self.labs[(self.labs['start_time']>=i) & (self.labs['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'valuenum':np.nanmean})
-#                 sub_labs=sub_labs.reset_index()
-#                 sub_labs['start_time']=t
-#                 if final_labs.empty:
-#                     final_labs=sub_labs
-#                 else:    
-#                     final_labs=final_labs.append(sub_labs)
-            
-#              t=t+1
-#         print("bucket",bucket)
-#         los=int(self.los/bucket)
+        # final_meds = final_meds.append(self.meds)
+        # final_ing = final_ing.append(self.ing)
+        # final_proc = final_proc.append(self.proc)
+        # final_out = final_out.append(self.out)
+        # final_chart = final_chart.append(self.chart)
+        # final_labs = final_labs.append(self.labs)
         
-        
-#         ###MEDS
-#         if(self.feat_med):
-#             f2_meds=final_meds.groupby(['stay_id','itemid','orderid']).size()
-#             self.med_per_adm=f2_meds.groupby('stay_id').sum().reset_index()[0].max()                 
-#             self.medlength_per_adm=final_meds.groupby('stay_id').size().max()
+        # for hid in tqdm(self.hids):
+        #     grp=self.data[self.data['stay_id']==hid]
+        #     los = int(grp['los'].values)
+            # los = int(750) #고정 길이 수정
+        bucket = 0.5
+        print('time resample with:', bucket)    
+        t=0
+        for i in tqdm(np.arange(0,self.los,bucket)): 
+            ###MEDS
+            if(self.feat_med):
+                sub_meds=self.meds[(self.meds['start_time']>=i) & (self.meds['start_time']<i+bucket)].groupby(['stay_id','itemid','orderid']).agg({'stop_time':'max','subject_id':'max','rate':np.nanmean,'amount':np.nanmean})
+                sub_meds=sub_meds.reset_index()
+                sub_meds['start_time']=t
+                sub_meds['stop_time']=sub_meds['stop_time']/bucket
+                if final_meds.empty:
+                    final_meds=sub_meds
+                else:
+                    final_meds=final_meds.append(sub_meds)
 
-#         ###INGS
-#         if(self.feat_ing):
-#             f2_ing=final_ing.groupby(['stay_id','itemid','orderid']).size()
-#             self.med_per_adm=f2_ing.groupby('stay_id').sum().reset_index()[0].max()                 
-#             self.medlength_per_adm=final_ing.groupby('stay_id').size().max()
+            ###ING
+            if(self.feat_ing):
+                sub_ing=self.ing[(self.ing['start_time']>=i) & (self.ing['start_time']<i+bucket)].groupby(['stay_id','itemid','orderid']).agg({'stop_time':'max','subject_id':'max','rate':np.nanmean,'amount':np.nanmean})
+                sub_ing=sub_ing.reset_index()
+                sub_ing['start_time']=t
+                sub_ing['stop_time']=sub_ing['stop_time']/bucket
+                if final_ing.empty:
+                    final_ing=sub_ing
+                else:
+                    final_ing=final_ing.append(sub_ing)
+            
+            ###PROC
+            if(self.feat_proc):
+                sub_proc=self.proc[(self.proc['start_time']>=i) & (self.proc['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'subject_id':'max'})
+                sub_proc=sub_proc.reset_index()
+                sub_proc['start_time']=t
+                if final_proc.empty:
+                    final_proc=sub_proc
+                else:    
+                    final_proc=final_proc.append(sub_proc)
+                    
+            ###OUT
+            if(self.feat_out):
+                sub_out=self.out[(self.out['start_time']>=i) & (self.out['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'subject_id':'max'})
+                sub_out=sub_out.reset_index()
+                sub_out['start_time']=t
+                if final_out.empty:
+                    final_out=sub_out
+                else:    
+                    final_out=final_out.append(sub_out)
+                    
+                    
+            ###CHART
+            if(self.feat_chart):
+                sub_chart=self.chart[(self.chart['start_time']>=i) & (self.chart['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'valuenum':np.nanmean})
+                sub_chart=sub_chart.reset_index()
+                sub_chart['start_time']=t
+                if final_chart.empty:
+                    final_chart=sub_chart
+                else:    
+                    final_chart=final_chart.append(sub_chart)
+                    
+                ###LAB
+            if(self.feat_lab):
+                sub_labs=self.labs[(self.labs['start_time']>=i) & (self.labs['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'valuenum':np.nanmean})
+                sub_labs=sub_labs.reset_index()
+                sub_labs['start_time']=t
+                if final_labs.empty:
+                    final_labs=sub_labs
+                else:    
+                    final_labs=final_labs.append(sub_labs)
+            
+            t=t+1
+        print("bucket",bucket)
+        los=int(self.los/bucket)
         
-#         ###PROC
-#         if(self.feat_proc):
-#             f2_proc=final_proc.groupby(['stay_id','itemid']).size()
-#             self.proc_per_adm=f2_proc.groupby('stay_id').sum().reset_index()[0].max()       
-#             self.proclength_per_adm=final_proc.groupby('stay_id').size().max()
+        
+        ###MEDS
+        if(self.feat_med):
+            f2_meds=final_meds.groupby(['stay_id','itemid','orderid']).size()
+            self.med_per_adm=f2_meds.groupby('stay_id').sum().reset_index()[0].max()                 
+            self.medlength_per_adm=final_meds.groupby('stay_id').size().max()
+
+        ###INGS
+        if(self.feat_ing):
+            f2_ing=final_ing.groupby(['stay_id','itemid','orderid']).size()
+            self.med_per_adm=f2_ing.groupby('stay_id').sum().reset_index()[0].max()                 
+            self.medlength_per_adm=final_ing.groupby('stay_id').size().max()
+        
+        ###PROC
+        if(self.feat_proc):
+            f2_proc=final_proc.groupby(['stay_id','itemid']).size()
+            self.proc_per_adm=f2_proc.groupby('stay_id').sum().reset_index()[0].max()       
+            self.proclength_per_adm=final_proc.groupby('stay_id').size().max()
             
-#         ###OUT
-#         if(self.feat_out):
-#             f2_out=final_out.groupby(['stay_id','itemid']).size()
-#             self.out_per_adm=f2_out.groupby('stay_id').sum().reset_index()[0].max() 
-#             self.outlength_per_adm=final_out.groupby('stay_id').size().max()
+        ###OUT
+        if(self.feat_out):
+            f2_out=final_out.groupby(['stay_id','itemid']).size()
+            self.out_per_adm=f2_out.groupby('stay_id').sum().reset_index()[0].max() 
+            self.outlength_per_adm=final_out.groupby('stay_id').size().max()
             
             
-#         ###chart
+        ###chart
+        if(self.feat_chart):
+            f2_chart=final_chart.groupby(['stay_id','itemid']).size()
+            self.chart_per_adm=f2_chart.groupby('stay_id').sum().reset_index()[0].max()             
+            self.chartlength_per_adm=final_chart.groupby('stay_id').size().max()
+            
+       ###LABS
+        if(self.feat_lab):
+            f2_labs=final_labs.groupby(['stay_id','itemid']).size()
+            self.labs_per_adm=f2_labs.groupby('stay_id').sum().reset_index()[0].max()        
+            self.labslength_per_adm=final_labs.groupby('stay_id').size().max()
+        
+        print("[ PROCESSED TIME SERIES TO EQUAL TIME INTERVAL ]")
+        ###CREATE DICT
 #         if(self.feat_chart):
-#             f2_chart=final_chart.groupby(['stay_id','itemid']).size()
-#             self.chart_per_adm=f2_chart.groupby('stay_id').sum().reset_index()[0].max()             
-#             self.chartlength_per_adm=final_chart.groupby('stay_id').size().max()
-            
-#        ###LABS
-#         if(self.feat_lab):
-#             f2_labs=final_labs.groupby(['stay_id','itemid']).size()
-#             self.labs_per_adm=f2_labs.groupby('stay_id').sum().reset_index()[0].max()        
-#             self.labslength_per_adm=final_labs.groupby('stay_id').size().max()
-        
-#         print("[ PROCESSED TIME SERIES TO EQUAL TIME INTERVAL ]")
-#         ###CREATE DICT
-# #         if(self.feat_chart):
-# #             self.create_chartDict(final_chart,los)
-# #         else:
-        self.create_Dict(final_meds,final_proc,final_out,final_chart,final_labs,final_ing)# , los
+#             self.create_chartDict(final_chart,los)
+#         else:
+        self.create_Dict(final_meds,final_proc,final_out,final_chart,final_labs,final_ing, los)# , los
         
     
     def create_chartDict(self,chart,los):
@@ -629,7 +637,7 @@ class Generator():
             pickle.dump(metaDic, fp)
             
             
-    def create_Dict(self,meds,proc,out,chart,labs,ing):
+    def create_Dict(self,meds,proc,out,chart,labs,ing, los): # ,los
         dataDic={}
         # print(los)
         labels_csv=pd.DataFrame(columns=['stay_id','label'])
@@ -648,7 +656,7 @@ class Generator():
             #print(static_csv.head())
         for hid in tqdm(self.hids):
             grp=self.data[self.data['stay_id']==hid]
-            los = int(grp['los'].values)
+            # los = self.los
             demo_csv=grp[['Age','gender','ethnicity','insurance']]
             if not os.path.exists("./data/csv/"+str(hid)):
                 os.makedirs("./data/csv/"+str(hid))
@@ -830,7 +838,7 @@ class Generator():
                     df2=pd.concat([df2, add_df])
                     df2=df2.sort_index()
                     df2=df2.fillna(0)
-                    # df2[df2>0]=1
+                    df2[df2>0]=1
                     #print(df2.head())
                     dataDic[hid]['Out']=df2.to_dict(orient="list")
 
@@ -845,7 +853,6 @@ class Generator():
                     dyn_csv=df2
                 else:
                     dyn_csv=pd.concat([dyn_csv,df2],axis=1)
-                
                 
                 
             ###CHART
