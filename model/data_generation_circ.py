@@ -15,13 +15,13 @@ if not os.path.exists("./data/csv"):
     os.makedirs("./data/csv")
     
 class Generator():
-    def __init__(self,cohort_output,if_mort,if_admn,if_los,feat_cond,feat_lab,feat_proc,feat_out,feat_chart,feat_med,feat_ing,impute,include_time,bucket,predW=1):
+    def __init__(self, cohort_output, if_mort, if_admn, if_los, feat_cond, feat_lab, feat_proc, feat_out, feat_chart, feat_med, feat_ing, impute, include_time, bucket, predW=1):
         self.feat_cond,self.feat_proc,self.feat_out,self.feat_chart,self.feat_med,self.feat_lab, self.feat_ing = feat_cond,feat_proc,feat_out,feat_chart,feat_med,feat_lab,feat_ing
         self.cohort_output=cohort_output
         self.impute=impute
         self.data = self.generate_adm()
         print("[ READ COHORT ]")
-        bucket = 0.5 
+        bucket = 1
         self.generate_feat()
         print("[ READ ALL FEATURES ]")
         
@@ -232,7 +232,9 @@ class Generator():
     
     
     def get_stay_id(self):
-        self.stay = pd.read_csv("./"+"mimiciv/2.0"+"/icu/icustays.csv.gz")
+
+            
+        self.stay = pd.read_csv("./"+"mimiciv/2.2"+"/icu/icustays.csv.gz")
         self.stay = self.stay[self.stay.notna()]
         
         self.chart['charttime'] = pd.to_datetime(self.chart['charttime'])
@@ -274,13 +276,18 @@ class Generator():
         
    
     def mortality_length(self,include_time,predW):
-        print("include_time",include_time)
-        self.los=include_time
+        # include_start_time = 3*24
+        include_end_time = 5*24
+        # print("include start time",include_start_time)
+        print("include end time",include_end_time)
+        # self.los=include_end_time
         # self.los = self.data['los']
-        self.data=self.data[(self.data['los'] >= include_time+predW)] #include time=750h, prediction window =1h, los가 751시간 이상인 코호트만 선정
-        # self.data=self.data[(self.data['los'] <= 375)] # 15일
+        self.data=self.data[(self.data['los'] >= include_end_time)] #3일
+        # self.data=self.data[(self.data['los'] <= include_end_time)] #7일
         self.hids=self.data['stay_id'].unique()
-        
+        print('num of patient: ', len(self.hids))
+        print('(MAX)expectation of obsevation: ', len(self.hids)*5*24)
+        # print('(MIN)expectation of obsevation: ', len(self.hids)*72)
         if(self.feat_cond):
             self.cond=self.cond[self.cond['stay_id'].isin(self.data['stay_id'])]
         
@@ -293,35 +300,35 @@ class Generator():
         ###MEDS
         if(self.feat_med):
             self.meds=self.meds[self.meds['stay_id'].isin(self.data['stay_id'])]
-            self.meds=self.meds[self.meds['start_time'] <= include_time]
-            self.meds.loc[self.meds.stop_time > include_time, 'stop_time']=include_time
+            self.meds=self.meds[self.meds['start_time'] <= include_end_time]
+            self.meds.loc[self.meds.stop_time > include_end_time, 'stop_time']=include_end_time
             
         ###ING
         if(self.feat_ing):
             self.ing=self.ing[self.ing['stay_id'].isin(self.data['stay_id'])]
-            self.ing=self.ing[self.ing['start_time'] <= include_time]
-            self.ing.loc[self.ing.stop_time > include_time, 'stop_time']=include_time
+            self.ing=self.ing[self.ing['start_time'] <= include_end_time]
+            self.ing.loc[self.ing.stop_time > include_end_time, 'stop_time']=include_end_time
                     
         
         ###PROCS
         if(self.feat_proc):
             self.proc=self.proc[self.proc['stay_id'].isin(self.data['stay_id'])]
-            self.proc=self.proc[self.proc['start_time']<=include_time]
+            self.proc=self.proc[self.proc['start_time']<=include_end_time]
             
         ###OUT
         if(self.feat_out):
             self.out=self.out[self.out['stay_id'].isin(self.data['stay_id'])]
-            self.out=self.out[self.out['start_time']<=include_time]
+            self.out=self.out[self.out['start_time']<=include_end_time]
             
        ###CHART
         if(self.feat_chart):
             self.chart=self.chart[self.chart['stay_id'].isin(self.data['stay_id'])]
-            self.chart=self.chart[self.chart['start_time']<=include_time]
+            self.chart=self.chart[self.chart['start_time']<=include_end_time]
             
         ###LAB
         if(self.feat_lab):
             self.labs=self.labs[self.labs['stay_id'].isin(self.data['stay_id'])]
-            self.labs=self.labs[self.labs['start_time']<=include_time]
+            self.labs=self.labs[self.labs['start_time']<=include_end_time]
         
         #self.los=include_time
     def los_length(self,include_time):
@@ -457,15 +464,19 @@ class Generator():
         # final_out = final_out.append(self.out)
         # final_chart = final_chart.append(self.chart)
         # final_labs = final_labs.append(self.labs)
+        print('time resample with:', bucket)
         
-        # for hid in tqdm(self.hids):
+        # sampled_patient = np.random.choice(self.hids, size=len(self.hids) // 2, replace=False)
+            
+        # for hid in tqdm(sampled_patient, desc = 'total stay'):
         #     grp=self.data[self.data['stay_id']==hid]
-        #     los = int(grp['los'].values)
-            # los = int(750) #고정 길이 수정
+        #     self.los = int(grp['los'].values)
+                
+
+        los = 5*24
         bucket = 0.5
-        print('time resample with:', bucket)    
         t=0
-        for i in tqdm(np.arange(0,self.los,bucket)): 
+        for i in tqdm(np.arange(0,los,bucket)): 
             ###MEDS
             if(self.feat_med):
                 sub_meds=self.meds[(self.meds['start_time']>=i) & (self.meds['start_time']<i+bucket)].groupby(['stay_id','itemid','orderid']).agg({'stop_time':'max','subject_id':'max','rate':np.nanmean,'amount':np.nanmean})
@@ -500,7 +511,9 @@ class Generator():
                     
             ###OUT
             if(self.feat_out):
-                sub_out=self.out[(self.out['start_time']>=i) & (self.out['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'subject_id':'max'})
+                # sub_out=self.out[(self.out['start_time']>=i) & (self.out['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'subject_id':'max', 'value':np.nanmean})
+                sub_out=self.out[(self.out['start_time']>=i) & (self.out['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'value':np.nanmean}) #이게 맞는거 아닌가?
+                # sub_out=self.out[(self.out['start_time']>=i) & (self.out['start_time']<i+bucket)].groupby(['stay_id','itemid']).agg({'subject_id':'max'})
                 sub_out=sub_out.reset_index()
                 sub_out['start_time']=t
                 if final_out.empty:
@@ -530,9 +543,10 @@ class Generator():
                     final_labs=final_labs.append(sub_labs)
             
             t=t+1
-        print("bucket",bucket)
-        los=int(self.los/bucket)
-        
+
+                
+        # print("bucket",bucket)
+        # los=int(self.los/bucket)
         
         ###MEDS
         if(self.feat_med):
@@ -576,68 +590,9 @@ class Generator():
 #         if(self.feat_chart):
 #             self.create_chartDict(final_chart,los)
 #         else:
-        self.create_Dict(final_meds,final_proc,final_out,final_chart,final_labs,final_ing, los)# , los
-        
-    
-    def create_chartDict(self,chart,los):
-        dataDic={}
-        for hid in self.hids:
-            grp=self.data[self.data['stay_id']==hid]
-            dataDic[hid]={'Chart':{},'label':int(grp['label'])}
-        for hid in tqdm(self.hids):
-            ###CHART
-            if(self.feat_chart):
-                df2=chart[chart['stay_id']==hid]
-                val=df2.pivot_table(index='start_time',columns='itemid',values='valuenum')
-                df2['val']=1
-                df2=df2.pivot_table(index='start_time',columns='itemid',values='val')
-                #print(df2.shape)
-                add_indices = pd.Index(range(los)).difference(df2.index)
-                add_df = pd.DataFrame(index=add_indices, columns=df2.columns).fillna(np.nan)
-                df2=pd.concat([df2, add_df])
-                df2=df2.sort_index()
-                df2=df2.fillna(0)
-                
-                val=pd.concat([val, add_df])
-                val=val.sort_index()
-                if self.impute=='Mean':
-                    val=val.ffill()
-                    val=val.bfill()
-                    val=val.fillna(val.mean())
-                elif self.impute=='Median':
-                    val=val.ffill()
-                    val=val.bfill()
-                    val=val.fillna(val.median())
-                val=val.fillna(0)
-                
-                
-                df2[df2>0]=1
-                df2[df2<0]=0
-                #print(df2.head())
-                dataDic[hid]['Chart']['signal']=df2.iloc[:,0:].to_dict(orient="list")
-                dataDic[hid]['Chart']['val']=val.iloc[:,0:].to_dict(orient="list")
+        self.create_Dict(final_meds,final_proc,final_out,final_chart,final_labs,final_ing)# , los   
             
-            
-                
-        ######SAVE DICTIONARIES##############
-        with open("./data/dict/metaDic", 'rb') as fp:
-            metaDic=pickle.load(fp)
-        
-        with open("./data/dict/dataChartDic", 'wb') as fp:
-            pickle.dump(dataDic, fp)
-
-      
-        with open("./data/dict/chartVocab", 'wb') as fp:
-            pickle.dump(list(chart['itemid'].unique()), fp)
-        self.chart_vocab = chart['itemid'].nunique()
-        metaDic['Chart']=self.chart_per_adm
-        
-            
-        with open("./data/dict/metaDic", 'wb') as fp:
-            pickle.dump(metaDic, fp)
-            
-            
-    def create_Dict(self,meds,proc,out,chart,labs,ing, los): # ,los
+    def create_Dict(self,meds,proc,out,chart,labs,ing): # ,los
         dataDic={}
         # print(los)
         labels_csv=pd.DataFrame(columns=['stay_id','label'])
@@ -647,17 +602,15 @@ class Generator():
 #         print("# Unique ethnicity",self.data.ethnicity.nunique())
 #         print("# Unique insurance",self.data.insurance.nunique())
 
-        for hid in self.hids:
+        for hid in tqdm(self.hids):
             grp=self.data[self.data['stay_id']==hid]
             dataDic[hid]={'Cond':{},'Proc':{},'Med':{},'Ing':{},'Out':{},'Chart':{},'Lab':{},'ethnicity':grp['ethnicity'].iloc[0],'age':int(grp['Age']),'gender':grp['gender'].iloc[0],'label':int(grp['label'])}
             labels_csv.loc[labels_csv['stay_id']==hid,'label']=int(grp['label'])
             
-
-            #print(static_csv.head())
-        for hid in tqdm(self.hids):
-            grp=self.data[self.data['stay_id']==hid]
-            # los = self.los
+            los = 5*24
+           
             demo_csv=grp[['Age','gender','ethnicity','insurance']]
+            
             if not os.path.exists("./data/csv/"+str(hid)):
                 os.makedirs("./data/csv/"+str(hid))
             demo_csv.to_csv('./data/csv/'+str(hid)+'/demo.csv',index=False)
@@ -706,20 +659,27 @@ class Generator():
 
 
                     feat_df=pd.DataFrame(columns=list(set(feat)-set(amount.columns)))
+                    feat_df_rate = pd.DataFrame(columns=list(set(feat)-set(rate.columns)))
     #                 print(feat)
     #                 print(amount.columns)
     #                 print(amount.head())
                     amount=pd.concat([amount,feat_df],axis=1)
+                    rate=pd.concat([rate,feat_df_rate],axis=1)
 
                     amount=amount[feat]
                     amount=amount.fillna(0)
+                    rate=rate[feat]
+                    rate=rate.fillna(0)
     #                 print(amount.columns)
                     amount.columns=pd.MultiIndex.from_product([["MEDS"], amount.columns])
-                
+                    rate.columns=pd.MultiIndex.from_product([["MEDS Rate"], rate.columns])
+
+                    medication = pd.concat([amount, rate], axis = 1)
+                    
                 if(dyn_csv.empty):
-                    dyn_csv=amount
+                    dyn_csv=medication
                 else:
-                    dyn_csv=pd.concat([dyn_csv,amount],axis=1)
+                    dyn_csv=pd.concat([dyn_csv,medication],axis=1)
                 
            
             ###INGS
@@ -729,7 +689,7 @@ class Generator():
                 if df2.shape[0]==0:
                     amount=pd.DataFrame(np.zeros([los,len(feat)]),columns=feat)
                     amount=amount.fillna(0)
-                    amount.columns=pd.MultiIndex.from_product([["MEDS"], amount.columns])
+                    amount.columns=pd.MultiIndex.from_product([["INGS"], amount.columns])
                 else:
                     rate=df2.pivot_table(index='start_time',columns='itemid',values='rate')
                     #print(rate)
@@ -765,20 +725,27 @@ class Generator():
 
 
                     feat_df=pd.DataFrame(columns=list(set(feat)-set(amount.columns)))
+                    feat_df_rate = pd.DataFrame(columns=list(set(feat)-set(rate.columns)))
     #                 print(feat)
     #                 print(amount.columns)
     #                 print(amount.head())
                     amount=pd.concat([amount,feat_df],axis=1)
+                    rate=pd.concat([rate,feat_df_rate],axis=1)
 
                     amount=amount[feat]
                     amount=amount.fillna(0)
+                    rate=rate[feat]
+                    rate=rate.fillna(0)
     #                 print(amount.columns)
                     amount.columns=pd.MultiIndex.from_product([["INGS"], amount.columns])
-                
+                    rate.columns=pd.MultiIndex.from_product([["INGS Rate"], rate.columns])
+
+                    ingredients = pd.concat([amount, rate], axis = 1)
+                    
                 if(dyn_csv.empty):
-                    dyn_csv=amount
+                    dyn_csv=medication
                 else:
-                    dyn_csv=pd.concat([dyn_csv,amount],axis=1)
+                    dyn_csv=pd.concat([dyn_csv,medication],axis=1)
                 
                 
             
@@ -825,11 +792,13 @@ class Generator():
             if(self.feat_out):
                 feat=out['itemid'].unique()
                 df2=out[out['stay_id']==hid]
+            
                 if df2.shape[0]==0:
-                    df2=pd.DataFrame(np.zeros([los,len(feat)]),columns=feat)
-                    df2=df2.fillna(0)
-                    df2.columns=pd.MultiIndex.from_product([["OUT"], df2.columns])
+                    val=pd.DataFrame(np.zeros([los,len(feat)]),columns=feat)
+                    val=val.fillna(0)
+                    val.columns=pd.MultiIndex.from_product([["OUT"], val.columns])
                 else:
+                    val=df2.pivot_table(index='start_time',columns='itemid',values='value')
                     df2['val']=1
                     df2=df2.pivot_table(index='start_time',columns='itemid',values='val')
                     #print(df2.shape)
@@ -838,22 +807,30 @@ class Generator():
                     df2=pd.concat([df2, add_df])
                     df2=df2.sort_index()
                     df2=df2.fillna(0)
+
+                    val=pd.concat([val, add_df])
+                    val=val.sort_index()
+                    val=val.fillna(0)
+                    
                     df2[df2>0]=1
+                    df2[df2<0]=0
                     #print(df2.head())
-                    dataDic[hid]['Out']=df2.to_dict(orient="list")
+                    
+                    dataDic[hid]['Out']['signal']=df2.iloc[:,0:].to_dict(orient="list") #값이 있으면 1 아니면 0
+                    dataDic[hid]['Out']['val']=val.iloc[:,0:].to_dict(orient="list")
 
-                    feat_df=pd.DataFrame(columns=list(set(feat)-set(df2.columns)))
-                    df2=pd.concat([df2,feat_df],axis=1)
+                    feat_df=pd.DataFrame(columns=list(set(feat)-set(val.columns)))
+                    val=pd.concat([val,feat_df],axis=1)
 
-                    df2=df2[feat]
-                    df2=df2.fillna(0)
-                    df2.columns=pd.MultiIndex.from_product([["OUT"], df2.columns])
+                    val=val[feat]
+                    val=val.fillna(0)
+                    val.columns=pd.MultiIndex.from_product([["OUT"], val.columns])
                 
                 if(dyn_csv.empty):
-                    dyn_csv=df2
+                    dyn_csv=val
                 else:
-                    dyn_csv=pd.concat([dyn_csv,df2],axis=1)
-                
+                    dyn_csv=pd.concat([dyn_csv,val],axis=1)
+                    
                 
             ###CHART
             if(self.feat_chart):
@@ -879,11 +856,11 @@ class Generator():
                     if self.impute=='Mean':
                         val=val.ffill()
                         val=val.bfill()
-                        val=val.fillna(val.mean())
+                        val=val.interpolate()
                     elif self.impute=='Median':
                         val=val.ffill()
                         val=val.bfill()
-                        val=val.fillna(val.median())
+                        val=val.interpolate()
                     val=val.fillna(0)
 
 
