@@ -353,6 +353,6 @@ def features_selection_icu(local_dir, cohort_output, diag_flag, proc_flag, med_f
         labs=labs[labs['spec_itemid'].isin(features['itemid'].unique())]
         print("Total number of rows",labs.shape[0])
         rename_dict = dict(zip(features.itemid, features.rename_n))
-        labs['itemid'] = labs['itemid'].map(rename_dict)
+        labs['spec_itemid'] = labs['spec_itemid'].map(rename_dict)
         labs.to_csv(local_dir+"/features/preproc_microlabs.csv.gz", compression='gzip', index=False)
         print("[SUCCESSFULLY SAVED MICRO LABS DATA]")
