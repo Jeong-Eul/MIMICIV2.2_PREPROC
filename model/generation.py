@@ -273,7 +273,7 @@ def tabularization(feat_med, feat_ing, feat_out, feat_chart, feat_lab, feat_micr
     
     for hid in tqdm(valid_stay_ids, desc = 'Tabularize EHR for total stay 20,809'):
         gc.collect()
-        grp=data[data['patientunitstayid']==hid]
+        grp=data[data['stay_id']==hid]
         los = int(grp['los'].values)
         if not os.path.exists(local+"/csv/"+str(hid)):
             os.makedirs(local+"/csv/"+str(hid))
@@ -394,7 +394,7 @@ def tabularization(feat_med, feat_ing, feat_out, feat_chart, feat_lab, feat_micr
             if df2.shape[0]==0:
                 hot=pd.DataFrame(np.zeros([los,len(feat)]),columns=feat)
                 hot=hot.fillna(0)
-                hot.columns=pd.MultiIndex.from_product([["PROC"], df2.columns])
+                hot.columns=pd.MultiIndex.from_product([["PROC"], hot.columns])
             else:
                 df2['val']=1
                 hot=df2.pivot_table(index='start_time',columns='itemid',values='val')
