@@ -399,7 +399,8 @@ def tabularization(feat_med, feat_ing, feat_out, feat_chart, feat_lab, feat_micr
                 df2['val']=1
                 hot=df2.pivot_table(index='start_time',columns='itemid',values='val')
                 df2=df2.pivot_table(index='start_time',columns='itemid',values='stop_time')
-    
+
+                add_indices = pd.Index(range(los)).difference(df2.index)
                 add_df = pd.DataFrame(index=add_indices, columns=df2.columns).fillna(np.nan)
                 df2=pd.concat([df2, add_df])
                 df2=df2.sort_index()
